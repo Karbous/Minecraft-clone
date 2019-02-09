@@ -34,16 +34,33 @@ public class Chunk
             {
                 for (int x = 0; x < World.chunkSize; x++)
                 {
-                    Vector3 newBlockPosition = new Vector3(x, y, z);
+                    Vector3 newBlockLocalPosition = new Vector3(x, y, z);
+                    Vector3 newBlockWorldPosition = new Vector3
+                        (
+                            (int)(x + chunkGameObject.transform.position.x),
+                            (int)(y + chunkGameObject.transform.position.y),
+                            (int)(z + chunkGameObject.transform.position.z)
+                        );
 
-                    // temporary, only to see if making holes(air) in chunk will render them correctly
-                    if (UnityEngine.Random.Range(0, 100) < 50)
+                    if ((int)newBlockWorldPosition.y <= HeightGenerator.GenerateUnbreakableHeight(newBlockWorldPosition.x, newBlockWorldPosition.z))
                     {
-                        blocksInChunk[x, y, z] = new Block(Block.BlockType.DIRT, newBlockPosition, this);
+                        blocksInChunk[x, y, z] = new Block(Block.BlockType.UNBREAKABLE, newBlockLocalPosition, this);
+                    }
+                    else if ((int)newBlockWorldPosition.y <= HeightGenerator.GenerateStoneHeight(newBlockWorldPosition.x, newBlockWorldPosition.z))
+                    {
+                        blocksInChunk[x, y, z] = new Block(Block.BlockType.STONE, newBlockLocalPosition, this);
+                    }
+                    else if ((int)newBlockWorldPosition.y < HeightGenerator.GenerateTerrainHeight(newBlockWorldPosition.x, newBlockWorldPosition.z))
+                    {
+                        blocksInChunk[x, y, z] = new Block(Block.BlockType.DIRT, newBlockLocalPosition, this);
+                    }
+                    else if ((int)newBlockWorldPosition.y == HeightGenerator.GenerateTerrainHeight(newBlockWorldPosition.x, newBlockWorldPosition.z))
+                    {
+                        blocksInChunk[x, y, z] = new Block(Block.BlockType.GRASS, newBlockLocalPosition, this);
                     }
                     else
                     {
-                        blocksInChunk[x, y, z] = new Block(Block.BlockType.AIR, newBlockPosition, this);
+                        blocksInChunk[x, y, z] = new Block(Block.BlockType.AIR, newBlockLocalPosition, this);
                     }
                 }
             }
@@ -77,6 +94,12 @@ public class Chunk
             combine[i].transform = meshFilters[i].transform.localToWorldMatrix;
         }
 
+        //delete all uncombined children quads
+        foreach (Transform quad in chunkGameObject.gameObject.transform)
+        {
+            UnityEngine.Object.Destroy(quad.gameObject);
+        }
+
         //create new mesh on this game object and add combined children meshes to it
         MeshFilter meshFilter = chunkGameObject.gameObject.AddComponent<MeshFilter>();
         meshFilter.mesh.CombineMeshes(combine);
@@ -85,10 +108,8 @@ public class Chunk
         MeshRenderer meshRenderer = chunkGameObject.gameObject.AddComponent<MeshRenderer>();
         meshRenderer.material = cubeMaterial;
 
-        //delete all uncombined children quads
-        foreach (Transform quad in chunkGameObject.gameObject.transform)
-        {
-            UnityEngine.Object.Destroy(quad.gameObject);
-        }
+        // create new mesh collider on this game object
+        MeshCollider meshCollider = chunkGameObject.gameObject.AddComponent<MeshCollider>();
+        meshCollider.sharedMesh = meshFilter.mesh;
     }
 }

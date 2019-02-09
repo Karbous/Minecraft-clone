@@ -1,20 +1,29 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class World : MonoBehaviour
 {
     [SerializeField] Material cubeMaterial;
-    [SerializeField] int columnHeight = 2;
-    [SerializeField] int worldSize = 2;
-    public static int chunkSize = 8;
+    [SerializeField] GameObject player;
+    [SerializeField] GameObject loadingScreen;
+    [SerializeField] Slider loadingSlider;
+
+    public static int columnHeight = 8;
+    public static int chunkSize = 16;
+    public static int horizontalRadius = 1;
+
     public static Dictionary<string, Chunk> chunks = new Dictionary<string, Chunk>();
 
     IEnumerator BuildWorld()
     {
-        for (int z = 0; z < worldSize; z++)
+        float totalChunks = (Mathf.Pow((horizontalRadius * 2) + 1, 2) * columnHeight) * 2;
+        int chunksToLoad = 0;
+
+        for (int z = -horizontalRadius; z <= horizontalRadius; z++)
         {
-            for (int x = 0; x < worldSize; x++)
+            for (int x = -horizontalRadius; x <= horizontalRadius; x++)
             {
                 for (int y = 0; y < columnHeight; y++)
                 {
@@ -22,19 +31,28 @@ public class World : MonoBehaviour
                     Chunk newChunk = new Chunk(chunkPosition, cubeMaterial);
                     newChunk.chunkGameObject.transform.parent = transform;
                     chunks.Add(newChunk.chunkGameObject.name, newChunk);
+
+                    chunksToLoad++;
+                    loadingSlider.value = chunksToLoad / totalChunks;
+
+                    yield return null;
                 }
             }
         }
         foreach (KeyValuePair<string, Chunk> chunk in chunks)
         {
             chunk.Value.DrawChunk();
+            chunksToLoad++;
+            loadingSlider.value = chunksToLoad / totalChunks;
             yield return null;
         }
-    }
 
+        loadingScreen.SetActive(false);
+        player.SetActive(true);
+    }
 
     void Start()
     {
-        StartCoroutine(BuildWorld());       
+        StartCoroutine(BuildWorld());
     }
 }

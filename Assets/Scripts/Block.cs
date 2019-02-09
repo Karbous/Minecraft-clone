@@ -4,7 +4,7 @@ using UnityEngine;
 public class Block
 {
     enum CubeSide { BOTTOM, TOP, LEFT, RIGHT, FRONT, BACK };
-    public enum BlockType { GRASS, DIRT, STONE, AIR };
+    public enum BlockType { GRASS, DIRT, STONE, UNBREAKABLE, AIR };
 
     // Block class field
     BlockType blockType;
@@ -18,6 +18,7 @@ public class Block
 		/*GRASS SIDE*/		{new Vector2( 0.1875f, 0.9375f ), new Vector2( 0.25f, 0.9375f), new Vector2( 0.1875f, 1.0f ),new Vector2( 0.25f, 1.0f )},
 		/*DIRT*/			{new Vector2( 0.125f, 0.9375f ), new Vector2( 0.1875f, 0.9375f), new Vector2( 0.125f, 1.0f ),new Vector2( 0.1875f, 1.0f )},
 		/*STONE*/			{new Vector2( 0, 0.875f ), new Vector2( 0.0625f, 0.875f), new Vector2( 0, 0.9375f ),new Vector2( 0.0625f, 0.9375f )},
+		/*UNBREAKABLE*/	    {new Vector2( 0.0625f, 0.5f ), new Vector2( 0.125f, 0.5f), new Vector2( 0.0625f, 0.5625f ),new Vector2( 0.125f, 0.5625f )},
         /*VIOLET*/          {new Vector2( 0.25f, 0.375f ), new Vector2( 0.3125f, 0.375f), new Vector2( 0.25f, 0.4375f ),new Vector2( 0.3125f, 0.4375f )}
     };
 
@@ -202,12 +203,18 @@ public class Block
                 UV01 = blockUVs[3, 2];
                 UV11 = blockUVs[3, 3];
                 break;
+            case BlockType.UNBREAKABLE:
+                UV00 = blockUVs[4, 0];
+                UV10 = blockUVs[4, 1];
+                UV01 = blockUVs[4, 2];
+                UV11 = blockUVs[4, 3];
+                break;
             default:
                 // error texture if block type unknown
-                UV00 = blockUVs[0, 0];
-                UV10 = blockUVs[0, 1];
-                UV01 = blockUVs[0, 2];
-                UV11 = blockUVs[0, 3];
+                UV00 = blockUVs[5, 0];
+                UV10 = blockUVs[5, 1];
+                UV01 = blockUVs[5, 2];
+                UV11 = blockUVs[5, 3];
                 break;
         }
 
