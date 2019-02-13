@@ -1,15 +1,20 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Block
 {
     enum CubeSide { BOTTOM, TOP, LEFT, RIGHT, FRONT, BACK };
     public enum BlockType { GRASS, DIRT, STONE, UNBREAKABLE, AIR };
+    int[] maxBlockHealth = { 2, 2, 4, -1, 0 };
+    public enum CrackBlockType { NOCRACK, CRACK1, CRACK2, CRACK3 }
 
-    // Block class field
+
     BlockType blockType;
-    Chunk parentChunk;
-    Vector3 blockPosition;
+    CrackBlockType crackBlockType;
+    public Chunk parentChunk;
+    public Vector3 blockPosition;
+    int currentBlockHealth;
 
     // UVs of the particular texture in texture atlas
     Vector2[,] blockUVs =
@@ -17,11 +22,14 @@ public class Block
 		/*GRASS TOP*/		{new Vector2( 0.125f, 0.375f ), new Vector2( 0.1875f, 0.375f), new Vector2( 0.125f, 0.4375f ),new Vector2( 0.1875f, 0.4375f )},
 		/*GRASS SIDE*/		{new Vector2( 0.1875f, 0.9375f ), new Vector2( 0.25f, 0.9375f), new Vector2( 0.1875f, 1.0f ),new Vector2( 0.25f, 1.0f )},
 		/*DIRT*/			{new Vector2( 0.125f, 0.9375f ), new Vector2( 0.1875f, 0.9375f), new Vector2( 0.125f, 1.0f ),new Vector2( 0.1875f, 1.0f )},
-		/*STONE*/			{new Vector2( 0, 0.875f ), new Vector2( 0.0625f, 0.875f), new Vector2( 0, 0.9375f ),new Vector2( 0.0625f, 0.9375f )},
+		/*STONE*/			{new Vector2( 0.0f, 0.875f ), new Vector2( 0.0625f, 0.875f), new Vector2( 0.0f, 0.9375f ),new Vector2( 0.0625f, 0.9375f )},
 		/*UNBREAKABLE*/	    {new Vector2( 0.0625f, 0.5f ), new Vector2( 0.125f, 0.5f), new Vector2( 0.0625f, 0.5625f ),new Vector2( 0.125f, 0.5625f )},
-        /*VIOLET*/          {new Vector2( 0.25f, 0.375f ), new Vector2( 0.3125f, 0.375f), new Vector2( 0.25f, 0.4375f ),new Vector2( 0.3125f, 0.4375f )}
-    };
 
+        /*NOCRACK*/         {new Vector2( 0.6875f, 0f ), new Vector2( 0.75f, 0f), new Vector2( 0.6875f, 0.0625f ),new Vector2( 0.75f, 0.0625f )},
+        /*CRACK1*/          {new Vector2( 0.0625f, 0.0f ), new Vector2( 0.125f, 0.0f), new Vector2( 0.0625f, 0.0625f ),new Vector2( 0.125f, 0.0625f )},
+        /*CRACK2*/          {new Vector2( 0.125f, 0.0f ), new Vector2( 0.1875f, 0.0f), new Vector2( 0.125f, 0.0625f ),new Vector2( 0.1875f, 0.0625f )},
+        /*CRACK3*/          {new Vector2( 0.1875f, 0.0f ), new Vector2( 0.25f, 0.0f), new Vector2( 0.1875f, 0.0625f ),new Vector2( 0.25f, 0.0625f )},
+    };
 
     // constructor
     public Block(BlockType _blockType, Vector3 _blockPosition, Chunk _parentChunk)
@@ -29,6 +37,8 @@ public class Block
         blockType = _blockType;
         parentChunk = _parentChunk;
         blockPosition = _blockPosition;
+        currentBlockHealth = maxBlockHealth[(int)blockType];
+        crackBlockType = CrackBlockType.NOCRACK;
     }
 
     public void CreateVisibleQuads()
@@ -64,6 +74,16 @@ public class Block
         {
             CreateQuad(CubeSide.LEFT);
         }
+    }
+
+    public void CreateGhostBlock()
+    {
+        CreateQuad(CubeSide.FRONT);
+        CreateQuad(CubeSide.BACK);
+        CreateQuad(CubeSide.TOP);
+        CreateQuad(CubeSide.BOTTOM);
+        CreateQuad(CubeSide.RIGHT);
+        CreateQuad(CubeSide.LEFT);
     }
 
     bool HasSolidNeighbour(int x, int y, int z)
@@ -102,7 +122,6 @@ public class Block
             }
             else
             {
-                // we are at the edge of the world, the neighbour is never solid
                 return false;
             }
         }
@@ -140,6 +159,46 @@ public class Block
         }
     }
 
+    public void SetBlockType(BlockType newBlockType)
+    {
+        blockType = newBlockType;
+        crackBlockType = CrackBlockType.NOCRACK;
+        currentBlockHealth = maxBlockHealth[(int)blockType];
+    }
+
+    public bool BlockIsDestroyed()
+    {
+        // if block is unbreakable
+        if (currentBlockHealth == -1)
+        {
+            return false;
+        }
+
+        // damage the block
+        currentBlockHealth--;
+        crackBlockType++;
+        World.chunksToSave.Add(parentChunk.chunkGameObject.name);
+
+        if (currentBlockHealth <= 0)
+        {
+            // destroy the block
+            SetBlockType(BlockType.AIR);
+            parentChunk.Redraw();
+            return true;
+        }
+
+        parentChunk.Redraw();
+        return false;
+    }
+
+    public bool BuildBlock(BlockType blockType)
+    {
+        SetBlockType(blockType);
+        World.chunksToSave.Add(parentChunk.chunkGameObject.name);
+        parentChunk.Redraw();
+        return true;
+    }
+
     void CreateQuad(CubeSide cubeSide)
     {
         Mesh mesh = new Mesh();
@@ -147,6 +206,7 @@ public class Block
         Vector3[] verticies = new Vector3[4];
         Vector3[] normals = new Vector3[4];
         Vector2[] UVs = new Vector2[4];
+        List<Vector2> crackUVs = new List<Vector2>();
         int[] triangles = new int[6];
 
         // all possible vertices
@@ -211,12 +271,17 @@ public class Block
                 break;
             default:
                 // error texture if block type unknown
-                UV00 = blockUVs[5, 0];
-                UV10 = blockUVs[5, 1];
-                UV01 = blockUVs[5, 2];
-                UV11 = blockUVs[5, 3];
+                UV00 = blockUVs[0, 0];
+                UV10 = blockUVs[0, 0];
+                UV01 = blockUVs[0, 0];
+                UV11 = blockUVs[0, 0];
                 break;
         }
+
+        crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 3]);
+        crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 2]);
+        crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 0]);
+        crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 1]);
 
         // construct all quads of the cube
         switch (cubeSide)
@@ -265,14 +330,15 @@ public class Block
         mesh.vertices = verticies;
         mesh.normals = normals;
         mesh.uv = UVs;
+        mesh.SetUVs(1, crackUVs);
         mesh.triangles = triangles;
 
         mesh.RecalculateBounds();
 
         // create quad
         GameObject quad = new GameObject("quad");
-        quad.transform.position = blockPosition;
         quad.transform.parent = parentChunk.chunkGameObject.transform;
+        quad.transform.position = blockPosition;
 
         // add mesh filter
         MeshFilter meshFilter = quad.AddComponent<MeshFilter>();

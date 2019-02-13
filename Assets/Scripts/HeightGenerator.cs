@@ -4,15 +4,18 @@ using UnityEngine;
 
 public class HeightGenerator
 {
-    static int terrainMaxHeight = (int)(World.chunkSize * World.columnHeight * 0.7f);
     static int octaves = 4;
     static float persistence = 0.5f;
+    public static float offsetX = 0f;
+    public static float offsetZ = 0f;
+
+    static int terrainMaxHeight = 130;
     static float terrainSmooth = 0.01f;
 
     static int stoneMaxHeight = terrainMaxHeight - 25;
-    static float stoneSmooth = terrainSmooth * 2;
+    static float stoneSmooth = terrainSmooth * 1.8f;
 
-    static int unbreakableMaxHeight = (int)(World.chunkSize * World.columnHeight * 0.1f);
+    static int unbreakableMaxHeight = 10;
     static float unbreakableSmooth = terrainSmooth * 0.8f;
 
 
@@ -34,14 +37,13 @@ public class HeightGenerator
 
     static float fractalBrownianMotion(float x, float z, int octaves, float persistance)
     {
-        float total = 0;
-        float frequency = 1;
-        float amplitude = 1;
-        float maxValue = 0;
-        float offset = 32000;
+        float total = 0f;
+        float frequency = 1f;
+        float amplitude = 1f;
+        float maxValue = 0f;
         for (int i = 0; i < octaves; i++)
         {
-            total += Mathf.PerlinNoise((x + offset) * frequency, (z + offset) * frequency) * amplitude;
+            total += Mathf.PerlinNoise((x + offsetX) * frequency, (z + offsetZ) * frequency) * amplitude;
 
             maxValue += amplitude;
 

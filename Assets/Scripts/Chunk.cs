@@ -5,17 +5,28 @@ using UnityEngine;
 
 public class Chunk
 {
-    /*public*/ Material cubeMaterial;
+    Material cubeMaterial;
     public Block[,,] blocksInChunk;
     public GameObject chunkGameObject;
+    public enum ChunkStatus { DONE, DRAW, DESTROY };
+    public ChunkStatus chunkStatus;
 
     //constructor
-    public Chunk (Vector3 chunkPosition, Material cubeMaterial)
+    public Chunk(Vector3 chunkPosition, Material cubeMaterial)
     {
         chunkGameObject = new GameObject(ChunkName(chunkPosition));
         chunkGameObject.transform.position = chunkPosition;
         this.cubeMaterial = cubeMaterial;
         BuildChunk();
+    }
+
+    // overloaded constructor for ghost block
+    public Chunk(Vector3 chunkPosition, Material cubeMaterial, Vector3 blockPosition, Block.BlockType blockType)
+    {
+        chunkGameObject = new GameObject("ghost cube");
+        chunkGameObject.transform.position = chunkPosition;
+        this.cubeMaterial = cubeMaterial;
+        BuildGhostChunk(blockPosition, blockType);
     }
 
     public static string ChunkName(Vector3 chunkPosition)
@@ -65,6 +76,28 @@ public class Chunk
                 }
             }
         }
+        chunkStatus = ChunkStatus.DRAW;
+    }
+
+    void BuildGhostChunk(Vector3 blockPosition, Block.BlockType blockType)
+    {
+        Block ghostBlock = new Block(blockType, blockPosition, this);
+        ghostBlock.CreateGhostBlock();
+        CombineQuads();
+        /*foreach (Transform quad in chunkGameObject.transform)
+        {
+            quad.gameObject.AddComponent<MeshRenderer>().material = cubeMaterial;
+            quad.gameObject.transform.position.
+        }
+        */
+    }
+
+    public void Redraw()
+    {
+        UnityEngine.Object.DestroyImmediate(chunkGameObject.GetComponent<MeshFilter>());
+        UnityEngine.Object.DestroyImmediate(chunkGameObject.GetComponent<MeshRenderer>());
+        UnityEngine.Object.DestroyImmediate(chunkGameObject.GetComponent<MeshCollider>());
+        DrawChunk();
     }
 
     public void DrawChunk()
@@ -81,6 +114,10 @@ public class Chunk
             }
         }
         CombineQuads();
+
+        // create new mesh collider on this game object
+        MeshCollider meshCollider = chunkGameObject.gameObject.AddComponent<MeshCollider>();
+        meshCollider.sharedMesh = chunkGameObject.gameObject.GetComponent<MeshFilter>().mesh;
     }
 
     void CombineQuads()
@@ -108,8 +145,5 @@ public class Chunk
         MeshRenderer meshRenderer = chunkGameObject.gameObject.AddComponent<MeshRenderer>();
         meshRenderer.material = cubeMaterial;
 
-        // create new mesh collider on this game object
-        MeshCollider meshCollider = chunkGameObject.gameObject.AddComponent<MeshCollider>();
-        meshCollider.sharedMesh = meshFilter.mesh;
     }
 }
