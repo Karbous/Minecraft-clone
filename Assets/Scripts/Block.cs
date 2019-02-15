@@ -10,7 +10,7 @@ public class Block
     public enum CrackBlockType { NOCRACK, CRACK1, CRACK2, CRACK3 }
 
 
-    BlockType blockType;
+    public BlockType blockType;
     CrackBlockType crackBlockType;
     public Chunk parentChunk;
     public Vector3 blockPosition;
@@ -177,7 +177,7 @@ public class Block
         // damage the block
         currentBlockHealth--;
         crackBlockType++;
-        World.chunksToSave.Add(parentChunk.chunkGameObject.name);
+        parentChunk.isChanged = true;
 
         if (currentBlockHealth <= 0)
         {
@@ -194,7 +194,7 @@ public class Block
     public bool BuildBlock(BlockType blockType)
     {
         SetBlockType(blockType);
-        World.chunksToSave.Add(parentChunk.chunkGameObject.name);
+        parentChunk.isChanged = true;
         parentChunk.Redraw();
         return true;
     }

@@ -3,28 +3,31 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using UnityEngine;
 using UnityEngine.UI;
+using System;
+
 
 public class World : MonoBehaviour
 {
     [SerializeField] Material cubeMaterial;
     [SerializeField] GameObject player;
-    //[SerializeField] GameObject loadingScreen;
-    //[SerializeField] Slider loadingSlider;
+    [SerializeField] GameObject loadingScreen;
+    [SerializeField] GameObject inGameUI;
+    [SerializeField] Slider loadingSlider;
 
     public static int chunkSize = 16;
-    public static int radius = 5;
+    public static int radius = 6;
 
     public static ConcurrentDictionary<string, Chunk> chunks = new ConcurrentDictionary<string, Chunk>();
-    public static ConcurrentDictionary<string, Chunk> savedChunks = new ConcurrentDictionary<string, Chunk>();
 
     public static List<string> chunksToRemove = new List<string>();
-    public static List<string> chunksToSave = new List<string>();
+
     public Vector3 lastPlayerPosition;
 
-    float heightGeneratorOffsetX;
-    float heightGeneratorOffsetZ;
+    public static float heightGeneratorOffsetX;
+    public static float heightGeneratorOffsetZ;
 
     bool firstBuild = true;
+    public bool finishedLoading = false;
     bool draw = false;
     int buildCoroutineCounter = 0;
     int drawCounter = 0;
@@ -35,12 +38,7 @@ public class World : MonoBehaviour
         Chunk chunk;
         string chunkName = Chunk.ChunkName(chunkPosition);
 
-        if (savedChunks.TryGetValue(chunkName, out chunk))
-        {
-            chunk.chunkGameObject.transform.parent = transform;
-            chunks.TryAdd(chunk.chunkGameObject.name, chunk);
-        }
-        else if (!chunks.TryGetValue(chunkName, out chunk))
+        if (!chunks.TryGetValue(chunkName, out chunk))
         {
             chunk = new Chunk(chunkPosition, cubeMaterial);
             chunk.chunkGameObject.transform.parent = transform;
@@ -83,7 +81,7 @@ public class World : MonoBehaviour
         if (y > 0)
         {
             BuildChunkAtPosition(x, y - 1, z);
-            StartCoroutine(BuildRecursiveWorld(x, y - 1, z, radius));
+            //StartCoroutine(BuildRecursiveWorld(x, y - 1, z, radius));
             yield return null;
         }
 
@@ -96,7 +94,6 @@ public class World : MonoBehaviour
         {
             if (Vector3.Distance(player.transform.position, chunk.Value.chunkGameObject.transform.position) > radius * chunkSize)
             {
-                chunk.Value.chunkStatus = Chunk.ChunkStatus.DESTROY;
                 chunksToRemove.Add(chunk.Key);
             }
         }
@@ -110,12 +107,12 @@ public class World : MonoBehaviour
             if (firstBuild)
             {
                 drawCounter++;
+                loadingSlider.value = (float)drawCounter / (float)chunks.Count;
             }
 
             if (chunk.Value.chunkStatus == Chunk.ChunkStatus.DRAW)
             {
                 chunk.Value.chunkStatus = Chunk.ChunkStatus.DONE;
-                //TO DO check for DONE neighbors to redraw them
                 chunk.Value.DrawChunk();
             }
 
@@ -134,14 +131,10 @@ public class World : MonoBehaviour
             {
                 chunks.TryRemove(chunkToRemoveName, out chunkToRemove);
 
-                // not working!!!!
-                /*
-                if (chunksToSave.Contains(chunkToRemoveName))
+                if (chunkToRemove.isChanged)
                 {
-                    savedChunks.TryAdd(chunkToRemoveName, chunkToRemove);
+                    chunkToRemove.SaveChunk();
                 }
-                */
-
                 Destroy(chunkToRemove.chunkGameObject);
 
                 yield return null;
@@ -152,7 +145,7 @@ public class World : MonoBehaviour
 
     void BuildNearPlayer()
     {
-        //StopAllCoroutines();
+        StopAllCoroutines();
         StartCoroutine(BuildRecursiveWorld(
             (int)(player.transform.position.x / chunkSize),
             (int)(player.transform.position.y / chunkSize),
@@ -161,9 +154,18 @@ public class World : MonoBehaviour
             ));
     }
 
-    void Start()
+    public void NewGame()
     {
-        //only for the new world
+        finishedLoading = false;
+        firstBuild = true;
+        draw = false;
+        loadingSlider.value = 0;
+        drawCounter = 0;
+        loadingSlider.value = 0;
+
+        chunksToRemove.Clear();
+        chunks.Clear();
+
         heightGeneratorOffsetX = UnityEngine.Random.Range(10000, 30000);
         heightGeneratorOffsetZ = UnityEngine.Random.Range(10000, 30000);
 
@@ -171,15 +173,65 @@ public class World : MonoBehaviour
         HeightGenerator.offsetZ = heightGeneratorOffsetZ;
 
         player.transform.position = new Vector3(
-            player.transform.position.x,
-            HeightGenerator.GenerateTerrainHeight(player.transform.position.x, player.transform.position.z) + 1,
-            player.transform.position.z
+            0f,
+            HeightGenerator.GenerateTerrainHeight(0f, 0f) + 1,
+            0f
             );
         lastPlayerPosition = player.transform.position;
 
-        // TO DO when loading a save file, load heightGeneratorOffsetX, heightGeneratorOffsetZ, 
+        BuildWorld();
+    }
+
+    public void LoadGame()
+    {
+        finishedLoading = false;
+        firstBuild = true;
+        draw = false;
+        loadingSlider.value = 0;
+        drawCounter = 0;
+        loadingSlider.value = 0;
 
 
+        chunksToRemove.Clear();
+        chunks.Clear();
+
+        if (SaveLoad.LoadWorld())
+        {
+            heightGeneratorOffsetX = SaveLoad.worldData.heightGeneratorOffsetX;
+            heightGeneratorOffsetZ = SaveLoad.worldData.heightGeneratorOffsetZ;
+            HeightGenerator.offsetX = heightGeneratorOffsetX;
+            HeightGenerator.offsetZ = heightGeneratorOffsetZ;
+
+            player.transform.position = new Vector3(
+                SaveLoad.worldData.playerPositionX,
+                SaveLoad.worldData.playerPositionY,
+                SaveLoad.worldData.playerPositionZ
+                );
+            player.transform.rotation = new Quaternion(
+                SaveLoad.worldData.playerRotationX,
+                SaveLoad.worldData.playerRotationY,
+                SaveLoad.worldData.playerRotationZ,
+                SaveLoad.worldData.playerRotationW
+                );
+
+            lastPlayerPosition = player.transform.position;
+
+            BuildWorld();
+        }
+        else
+        {
+            Debug.Log($"The game cannot be loaded! A save file may be missing: {Application.persistentDataPath}/hardsavedata/world.dat");
+        }
+    }
+
+    public void SaveGame()
+    {
+        SaveLoad.SaveWorld(player);
+    }
+
+
+    public void BuildWorld()
+    {
         //build starting chunk at player position
         BuildChunkAtPosition(
             (int)(player.transform.position.x / chunkSize),
@@ -196,35 +248,38 @@ public class World : MonoBehaviour
             ));
 
         draw = true;
+        finishedLoading = true;
     }
 
     void Update()
     {
-        // if new chunks were generated, draw them
-        if (buildCoroutineCounter <= 0 && draw)
+        if (finishedLoading)
         {
-            StartCoroutine(DrawChunks());
-            draw = false;
+            // only for the first build, wait until all chunks are drawn
+            if (firstBuild && drawCounter >= chunks.Count)
+            {
+                player.SetActive(true);
+                firstBuild = false;
+                loadingScreen.SetActive(false);
+                inGameUI.SetActive(true);
+            }
+
+            // if new chunks were generated, draw them
+            if (buildCoroutineCounter <= 0 && draw)
+            {
+                StartCoroutine(DrawChunks());
+                draw = false;
+            }
+
+            // if player walks certain distance, redraw the world around him
+            if (Vector3.Distance(player.transform.position, lastPlayerPosition) > chunkSize / 2)
+            {
+                lastPlayerPosition = player.transform.position;
+                BuildNearPlayer();
+                AddChunksToRemove();
+                StartCoroutine(RemoveOldChunks());
+                draw = true;
+            }
         }
-
-        // only for the first build, whait until all chunks are drawn
-        if (firstBuild && drawCounter >= chunks.Count)
-        {
-            player.SetActive(true);
-            firstBuild = false;
-            //TO DO disable load screen
-        }
-
-
-        if (Vector3.Distance(player.transform.position, lastPlayerPosition) > chunkSize/2)
-        {
-            lastPlayerPosition = player.transform.position;
-            BuildNearPlayer();
-            AddChunksToRemove();
-            StartCoroutine(RemoveOldChunks());
-            draw = true;
-        }
-
-
     }
 }

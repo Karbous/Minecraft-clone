@@ -10,6 +10,9 @@ public class Chunk
     public GameObject chunkGameObject;
     public enum ChunkStatus { DONE, DRAW, DESTROY };
     public ChunkStatus chunkStatus;
+    public bool isChanged = false;
+
+
 
     //constructor
     public Chunk(Vector3 chunkPosition, Material cubeMaterial)
@@ -34,8 +37,23 @@ public class Chunk
         return $"{chunkPosition.x}_{chunkPosition.y}_{chunkPosition.z}";
     }
 
+
+
+    //read data from files
+    bool LoadChunk()
+    {
+        return SaveLoad.LoadChunk(chunkGameObject.transform.position);
+    }
+
+    public void SaveChunk()
+    {
+        SaveLoad.SaveChunk(chunkGameObject.transform.position, blocksInChunk);
+    }
+
     void BuildChunk()
     {
+        bool isSaved = LoadChunk();
+
         blocksInChunk = new Block[World.chunkSize, World.chunkSize, World.chunkSize];
 
         //create blocks and add them to 3D array
@@ -52,6 +70,13 @@ public class Chunk
                             (int)(y + chunkGameObject.transform.position.y),
                             (int)(z + chunkGameObject.transform.position.z)
                         );
+
+                    if (isSaved)
+                    {
+                        blocksInChunk[x, y, z] = new Block(SaveLoad.blockData.blockTypeMatrix[x, y, z], newBlockLocalPosition, this);
+                        // skip the rest of this iteration
+                        continue;
+                    }
 
                     if ((int)newBlockWorldPosition.y <= HeightGenerator.GenerateUnbreakableHeight(newBlockWorldPosition.x, newBlockWorldPosition.z))
                     {
@@ -84,12 +109,6 @@ public class Chunk
         Block ghostBlock = new Block(blockType, blockPosition, this);
         ghostBlock.CreateGhostBlock();
         CombineQuads();
-        /*foreach (Transform quad in chunkGameObject.transform)
-        {
-            quad.gameObject.AddComponent<MeshRenderer>().material = cubeMaterial;
-            quad.gameObject.transform.position.
-        }
-        */
     }
 
     public void Redraw()
