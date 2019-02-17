@@ -83,7 +83,7 @@ public class SaveLoad
     static string hardSaveFolderForChunks = $"{Application.persistentDataPath}/hardsavedata/tmpChunks";
 
 
-    // to save and load chunk data of chunks that were changed when game is running
+    // ***to save and load chunk data of chunks that were changed when game is running***
 
     //create chunk save file name
     static string ChunkFileName(Vector3 chunkPosition)
@@ -122,7 +122,7 @@ public class SaveLoad
         return false;
     }
 
-    // to save a load world to keep its state after game is quit
+    // ***to save a load world to keep its state after game is quit***
 
     // save world
     public static void SaveWorld(GameObject player)
@@ -161,6 +161,7 @@ public class SaveLoad
         //copy chunk save files from hard save folder to tmp save folder
         DirectoryCopy(hardSaveFolderForChunks, tmpChunkSaveFolder);
 
+        // load world state
         string worldFileName = hardSaveFile;
         if (File.Exists(worldFileName))
         {

@@ -6,10 +6,11 @@ public class HeightGenerator
 {
     static int octaves = 4;
     static float persistence = 0.5f;
+
     public static float offsetX = 0f;
     public static float offsetZ = 0f;
 
-    static int terrainMaxHeight = 130;
+    static int terrainMaxHeight = 100;
     static float terrainSmooth = 0.01f;
 
     static int stoneMaxHeight = terrainMaxHeight - 25;
@@ -18,17 +19,19 @@ public class HeightGenerator
     static int unbreakableMaxHeight = 10;
     static float unbreakableSmooth = terrainSmooth * 0.8f;
 
-
+    // terrain height for dirt
     public static int GenerateTerrainHeight(float x, float z)
     {
         return (int)Mathf.Lerp(0, terrainMaxHeight, fractalBrownianMotion(x * terrainSmooth, z * terrainSmooth, octaves, persistence));
     }
 
+    // terrain height for stone
     public static int GenerateStoneHeight(float x, float z)
     {
         return (int)Mathf.Lerp(0, stoneMaxHeight, fractalBrownianMotion(x * stoneSmooth, z * stoneSmooth, octaves, persistence));
     }
 
+    // terrain height for unbreakable stone
     public static int GenerateUnbreakableHeight(float x, float z)
     {
         return (int)Mathf.Lerp(0, unbreakableMaxHeight, fractalBrownianMotion(x * unbreakableSmooth, z * unbreakableSmooth, octaves, persistence));

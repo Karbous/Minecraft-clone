@@ -49,9 +49,13 @@ public class BlockInteraction : MonoBehaviour
                 currentBuildMode = 3;
             }
 
+            // change UI image
             buildImage.sprite = buildSprites[currentBuildMode];
 
+            // destroy the ghost block
             Destroy(ghostBlockGameObject);
+
+            // draw new ghost block according to the new build mode
             if (currentBuildMode != 0 && previousHitBlock != null)
             {
                 Chunk ghostBlock = new Chunk(previousHitBlock.parentChunk.chunkGameObject.transform.position, ghostMaterial, previousHitBlock.blockPosition, blockTypeToBuild[currentBuildMode]);
@@ -74,7 +78,6 @@ public class BlockInteraction : MonoBehaviour
                 }
 
                 Block hitBlock = GetBlock(hit.point + hit.normal / 2f);
-
 
                 if (hitBlock != previousHitBlock)
                 {
@@ -122,6 +125,8 @@ public class BlockInteraction : MonoBehaviour
 
     private void RedrawNeighborChunks(Vector3 chunkPosition, Vector3 blockPosition)
     {
+        // if the change block is on the edge of the chunk, alo redraw the neighbor chunk
+
         List<string> chunksToUpdate = new List<string>();
 
         if (blockPosition.x == 0)
@@ -162,6 +167,8 @@ public class BlockInteraction : MonoBehaviour
 
     static Block GetBlock(Vector3 position)
     {
+        // gets the correct block to be build (or destroyed), even if the block to be build is in different chunk than the chunk that was hit
+
         int chunkX, chunkY, chunkZ;
 
         if (position.x > 0)
@@ -188,7 +195,6 @@ public class BlockInteraction : MonoBehaviour
         {
             chunkZ = (int)((Mathf.Round(position.z - World.chunkSize)+1) / World.chunkSize) * World.chunkSize;
         }
-
 
         int blockX = (int)Mathf.Abs(Mathf.Round(position.x) - chunkX);
         int blockY = (int)Mathf.Abs(Mathf.Round(position.y) - chunkY);

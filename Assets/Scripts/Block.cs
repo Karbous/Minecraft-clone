@@ -76,16 +76,6 @@ public class Block
         }
     }
 
-    public void CreateGhostBlock()
-    {
-        CreateQuad(CubeSide.FRONT);
-        CreateQuad(CubeSide.BACK);
-        CreateQuad(CubeSide.TOP);
-        CreateQuad(CubeSide.BOTTOM);
-        CreateQuad(CubeSide.RIGHT);
-        CreateQuad(CubeSide.LEFT);
-    }
-
     bool HasSolidNeighbour(int x, int y, int z)
     {
         // get the blocks to search in
@@ -130,26 +120,7 @@ public class Block
             blocks = parentChunk.blocksInChunk;
         }
 
-        return blocks[x, y, z].IsBlockSolid();
-    }
-
-    int GetBlockLocalPosition(int i)
-    {
-        if (i == -1)
-        {
-            i = World.chunkSize - 1;
-        }
-        else if (i == World.chunkSize)
-        {
-            i = 0;
-        }
-
-        return i;
-    }
-
-    public bool IsBlockSolid()
-    {
-        if (blockType == BlockType.AIR)
+        if (blocks[x, y, z].blockType == BlockType.AIR)
         {
             return false;
         }
@@ -159,46 +130,7 @@ public class Block
         }
     }
 
-    public void SetBlockType(BlockType newBlockType)
-    {
-        blockType = newBlockType;
-        crackBlockType = CrackBlockType.NOCRACK;
-        currentBlockHealth = maxBlockHealth[(int)blockType];
-    }
-
-    public bool BlockIsDestroyed()
-    {
-        // if block is unbreakable
-        if (currentBlockHealth == -1)
-        {
-            return false;
-        }
-
-        // damage the block
-        currentBlockHealth--;
-        crackBlockType++;
-        parentChunk.isChanged = true;
-
-        if (currentBlockHealth <= 0)
-        {
-            // destroy the block
-            SetBlockType(BlockType.AIR);
-            parentChunk.Redraw();
-            return true;
-        }
-
-        parentChunk.Redraw();
-        return false;
-    }
-
-    public bool BuildBlock(BlockType blockType)
-    {
-        SetBlockType(blockType);
-        parentChunk.isChanged = true;
-        parentChunk.Redraw();
-        return true;
-    }
-
+    // create a basic quad of the cube
     void CreateQuad(CubeSide cubeSide)
     {
         Mesh mesh = new Mesh();
@@ -278,12 +210,13 @@ public class Block
                 break;
         }
 
+        // secondary UVs for crack texture
         crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 3]);
         crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 2]);
         crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 0]);
         crackUVs.Add(blockUVs[(int)(crackBlockType) + 5, 1]);
 
-        // construct all quads of the cube
+        // construct quad according to the side of the cube
         switch (cubeSide)
         {
             case CubeSide.BOTTOM:
@@ -343,5 +276,69 @@ public class Block
         // add mesh filter
         MeshFilter meshFilter = quad.AddComponent<MeshFilter>();
         meshFilter.mesh = mesh;
+    }
+
+    int GetBlockLocalPosition(int i)
+    {
+        if (i == -1)
+        {
+            i = World.chunkSize - 1;
+        }
+        else if (i == World.chunkSize)
+        {
+            i = 0;
+        }
+
+        return i;
+    }
+
+    public void SetBlockType(BlockType newBlockType)
+    {
+        blockType = newBlockType;
+        crackBlockType = CrackBlockType.NOCRACK;
+        currentBlockHealth = maxBlockHealth[(int)blockType];
+    }
+
+    public bool BlockIsDestroyed()
+    {
+        // if block is unbreakable
+        if (currentBlockHealth == -1)
+        {
+            return false;
+        }
+
+        // damage the block
+        currentBlockHealth--;
+        crackBlockType++;
+        parentChunk.isChanged = true;
+
+        if (currentBlockHealth <= 0)
+        {
+            // destroy the block
+            SetBlockType(BlockType.AIR);
+            parentChunk.Redraw();
+            return true;
+        }
+
+        parentChunk.Redraw();
+        return false;
+    }
+
+    public bool BuildBlock(BlockType blockType)
+    {
+        SetBlockType(blockType);
+        parentChunk.isChanged = true;
+        parentChunk.Redraw();
+        return true;
+    }
+
+    public void CreateGhostBlock()
+    {
+        CreateQuad(CubeSide.FRONT);
+        CreateQuad(CubeSide.BACK);
+        CreateQuad(CubeSide.TOP);
+        CreateQuad(CubeSide.BOTTOM);
+        CreateQuad(CubeSide.RIGHT);
+        CreateQuad(CubeSide.LEFT);
     }
 }

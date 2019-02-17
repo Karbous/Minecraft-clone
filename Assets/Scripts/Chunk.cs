@@ -8,10 +8,8 @@ public class Chunk
     Material cubeMaterial;
     public Block[,,] blocksInChunk;
     public GameObject chunkGameObject;
-    public enum ChunkStatus { DONE, DRAW, DESTROY };
-    public ChunkStatus chunkStatus;
+    public bool toBeDrawn = false;
     public bool isChanged = false;
-
 
 
     //constructor
@@ -37,19 +35,6 @@ public class Chunk
         return $"{chunkPosition.x}_{chunkPosition.y}_{chunkPosition.z}";
     }
 
-
-
-    //read data from files
-    bool LoadChunk()
-    {
-        return SaveLoad.LoadChunk(chunkGameObject.transform.position);
-    }
-
-    public void SaveChunk()
-    {
-        SaveLoad.SaveChunk(chunkGameObject.transform.position, blocksInChunk);
-    }
-
     void BuildChunk()
     {
         bool isSaved = LoadChunk();
@@ -71,13 +56,14 @@ public class Chunk
                             (int)(z + chunkGameObject.transform.position.z)
                         );
 
+                    // if this chunk is saved, load the block data from the save file a continue to next iteration
                     if (isSaved)
                     {
                         blocksInChunk[x, y, z] = new Block(SaveLoad.blockData.blockTypeMatrix[x, y, z], newBlockLocalPosition, this);
-                        // skip the rest of this iteration
                         continue;
                     }
 
+                    // build block with a block type acording to the height (y position)
                     if ((int)newBlockWorldPosition.y <= HeightGenerator.GenerateUnbreakableHeight(newBlockWorldPosition.x, newBlockWorldPosition.z))
                     {
                         blocksInChunk[x, y, z] = new Block(Block.BlockType.UNBREAKABLE, newBlockLocalPosition, this);
@@ -101,7 +87,7 @@ public class Chunk
                 }
             }
         }
-        chunkStatus = ChunkStatus.DRAW;
+        toBeDrawn = true;
     }
 
     void BuildGhostChunk(Vector3 blockPosition, Block.BlockType blockType)
@@ -120,7 +106,7 @@ public class Chunk
     }
 
     public void DrawChunk()
-    { 
+    {
         //draw all blocks in chunk
         for (int z = 0; z < World.chunkSize; z++)
         {
@@ -132,6 +118,7 @@ public class Chunk
                 }
             }
         }
+
         CombineQuads();
 
         // create new mesh collider on this game object
@@ -163,6 +150,16 @@ public class Chunk
         //create new mesh renderer on this game object
         MeshRenderer meshRenderer = chunkGameObject.gameObject.AddComponent<MeshRenderer>();
         meshRenderer.material = cubeMaterial;
+    }
 
+
+    bool LoadChunk()
+    {
+        return SaveLoad.LoadChunk(chunkGameObject.transform.position);
+    }
+
+    public void SaveChunk()
+    {
+        SaveLoad.SaveChunk(chunkGameObject.transform.position, blocksInChunk);
     }
 }

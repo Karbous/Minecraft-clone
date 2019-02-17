@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using UnityEngine;
 using UnityEngine.UI;
-using System;
-
 
 public class World : MonoBehaviour
 {
@@ -32,140 +30,12 @@ public class World : MonoBehaviour
     int buildCoroutineCounter = 0;
     int drawCounter = 0;
 
-    void BuildChunkAtPosition(int x, int y, int z)
-    {
-        Vector3 chunkPosition = new Vector3(x * chunkSize, y * chunkSize, z * chunkSize);
-        Chunk chunk;
-        string chunkName = Chunk.ChunkName(chunkPosition);
-
-        if (!chunks.TryGetValue(chunkName, out chunk))
-        {
-            chunk = new Chunk(chunkPosition, cubeMaterial);
-            chunk.chunkGameObject.transform.parent = transform;
-            chunks.TryAdd(chunk.chunkGameObject.name, chunk);
-        }
-    }
-
-    IEnumerator BuildRecursiveWorld(int x, int y, int z, int radius)
-    {
-        buildCoroutineCounter++;
-
-        radius--;
-
-        if (radius <= 0)
-        {
-            buildCoroutineCounter--;
-            yield break;
-        }
-
-        BuildChunkAtPosition(x, y, z + 1);
-        StartCoroutine(BuildRecursiveWorld(x, y, z + 1, radius));
-        yield return null;
-
-        BuildChunkAtPosition(x, y, z - 1);
-        StartCoroutine(BuildRecursiveWorld(x, y, z - 1, radius));
-        yield return null;
-
-        BuildChunkAtPosition(x + 1, y, z);
-        StartCoroutine(BuildRecursiveWorld(x + 1, y, z, radius));
-        yield return null;
-
-        BuildChunkAtPosition(x - 1, y, z);
-        StartCoroutine(BuildRecursiveWorld(x - 1, y, z, radius));
-        yield return null;
-
-        BuildChunkAtPosition(x, y + 1, z);
-        StartCoroutine(BuildRecursiveWorld(x, y + 1, z, radius));
-        yield return null;
-
-        if (y > 0)
-        {
-            BuildChunkAtPosition(x, y - 1, z);
-            //StartCoroutine(BuildRecursiveWorld(x, y - 1, z, radius));
-            yield return null;
-        }
-
-        buildCoroutineCounter--;
-    }
-
-    void AddChunksToRemove()
-    {
-        foreach (KeyValuePair<string, Chunk> chunk in chunks)
-        {
-            if (Vector3.Distance(player.transform.position, chunk.Value.chunkGameObject.transform.position) > radius * chunkSize)
-            {
-                chunksToRemove.Add(chunk.Key);
-            }
-        }
-    }
-
-
-    IEnumerator DrawChunks()
-    {
-        foreach (KeyValuePair<string, Chunk> chunk in chunks)
-        {
-            if (firstBuild)
-            {
-                drawCounter++;
-                loadingSlider.value = (float)drawCounter / (float)chunks.Count;
-            }
-
-            if (chunk.Value.chunkStatus == Chunk.ChunkStatus.DRAW)
-            {
-                chunk.Value.chunkStatus = Chunk.ChunkStatus.DONE;
-                chunk.Value.DrawChunk();
-            }
-
-            yield return null;
-        }
-    }
-
-    IEnumerator RemoveOldChunks()
-    {
-        for (int i = 0; i < chunksToRemove.Count; i++)
-        {
-            string chunkToRemoveName = chunksToRemove[i];
-            Chunk chunkToRemove;
-
-            if (chunks.TryGetValue(chunkToRemoveName, out chunkToRemove))
-            {
-                chunks.TryRemove(chunkToRemoveName, out chunkToRemove);
-
-                if (chunkToRemove.isChanged)
-                {
-                    chunkToRemove.SaveChunk();
-                }
-                Destroy(chunkToRemove.chunkGameObject);
-
-                yield return null;
-            }
-        }
-        chunksToRemove.Clear();
-    }
-
-    void BuildNearPlayer()
-    {
-        StopAllCoroutines();
-        StartCoroutine(BuildRecursiveWorld(
-            (int)(player.transform.position.x / chunkSize),
-            (int)(player.transform.position.y / chunkSize),
-            (int)(player.transform.position.z / chunkSize),
-            radius
-            ));
-    }
-
+       
     public void NewGame()
     {
-        finishedLoading = false;
-        firstBuild = true;
-        draw = false;
-        loadingSlider.value = 0;
-        drawCounter = 0;
-        loadingSlider.value = 0;
+        ResetWorldToDefault();
 
-        chunksToRemove.Clear();
-        chunks.Clear();
-
+        // set random offset for the height generator algorithm
         heightGeneratorOffsetX = UnityEngine.Random.Range(10000, 30000);
         heightGeneratorOffsetZ = UnityEngine.Random.Range(10000, 30000);
 
@@ -182,7 +52,7 @@ public class World : MonoBehaviour
         BuildWorld();
     }
 
-    public void LoadGame()
+    private void ResetWorldToDefault()
     {
         finishedLoading = false;
         firstBuild = true;
@@ -190,10 +60,13 @@ public class World : MonoBehaviour
         loadingSlider.value = 0;
         drawCounter = 0;
         loadingSlider.value = 0;
-
-
         chunksToRemove.Clear();
         chunks.Clear();
+    }
+
+    public void LoadGame()
+    {
+        ResetWorldToDefault();
 
         if (SaveLoad.LoadWorld())
         {
@@ -251,6 +124,62 @@ public class World : MonoBehaviour
         finishedLoading = true;
     }
 
+    void BuildChunkAtPosition(int x, int y, int z)
+    {
+        Vector3 chunkPosition = new Vector3(x * chunkSize, y * chunkSize, z * chunkSize);
+        Chunk chunk;
+        string chunkName = Chunk.ChunkName(chunkPosition);
+
+        if (!chunks.TryGetValue(chunkName, out chunk))
+        {
+            chunk = new Chunk(chunkPosition, cubeMaterial);
+            chunk.chunkGameObject.transform.parent = transform;
+            chunks.TryAdd(chunk.chunkGameObject.name, chunk);
+        }
+    }
+
+    IEnumerator BuildRecursiveWorld(int x, int y, int z, int radius)
+    {
+        buildCoroutineCounter++;
+
+        radius--;
+
+        if (radius <= 0)
+        {
+            buildCoroutineCounter--;
+            yield break;
+        }
+
+        BuildChunkAtPosition(x, y, z + 1);
+        StartCoroutine(BuildRecursiveWorld(x, y, z + 1, radius));
+        yield return null;
+
+        BuildChunkAtPosition(x, y, z - 1);
+        StartCoroutine(BuildRecursiveWorld(x, y, z - 1, radius));
+        yield return null;
+
+        BuildChunkAtPosition(x + 1, y, z);
+        StartCoroutine(BuildRecursiveWorld(x + 1, y, z, radius));
+        yield return null;
+
+        BuildChunkAtPosition(x - 1, y, z);
+        StartCoroutine(BuildRecursiveWorld(x - 1, y, z, radius));
+        yield return null;
+
+        BuildChunkAtPosition(x, y + 1, z);
+        StartCoroutine(BuildRecursiveWorld(x, y + 1, z, radius));
+        yield return null;
+
+        if (y > 0)
+        {
+            BuildChunkAtPosition(x, y - 1, z);
+            //StartCoroutine(BuildRecursiveWorld(x, y - 1, z, radius));
+            yield return null;
+        }
+
+        buildCoroutineCounter--;
+    }
+
     void Update()
     {
         if (finishedLoading)
@@ -272,7 +201,7 @@ public class World : MonoBehaviour
             }
 
             // if player walks certain distance, redraw the world around him
-            if (Vector3.Distance(player.transform.position, lastPlayerPosition) > chunkSize / 2)
+            if (Vector3.Distance(player.transform.position, lastPlayerPosition) > chunkSize /*/ 2*/)
             {
                 lastPlayerPosition = player.transform.position;
                 BuildNearPlayer();
@@ -281,5 +210,70 @@ public class World : MonoBehaviour
                 draw = true;
             }
         }
+    }
+
+    IEnumerator DrawChunks()
+    {
+        foreach (KeyValuePair<string, Chunk> chunk in chunks)
+        {
+            if (firstBuild)
+            {
+                drawCounter++;
+                loadingSlider.value = (float)drawCounter / (float)chunks.Count;
+            }
+
+            if (chunk.Value.toBeDrawn)
+            {
+                chunk.Value.toBeDrawn = false;
+                chunk.Value.DrawChunk();
+            }
+
+            yield return null;
+        }
+    }
+
+    void BuildNearPlayer()
+    {
+        StopAllCoroutines();
+        StartCoroutine(BuildRecursiveWorld(
+            (int)(player.transform.position.x / chunkSize),
+            (int)(player.transform.position.y / chunkSize),
+            (int)(player.transform.position.z / chunkSize),
+            radius
+            ));
+    }
+
+    void AddChunksToRemove()
+    {
+        foreach (KeyValuePair<string, Chunk> chunk in chunks)
+        {
+            if (Vector3.Distance(player.transform.position, chunk.Value.chunkGameObject.transform.position) > radius * chunkSize)
+            {
+                chunksToRemove.Add(chunk.Key);
+            }
+        }
+    }
+
+    IEnumerator RemoveOldChunks()
+    {
+        for (int i = 0; i < chunksToRemove.Count; i++)
+        {
+            string chunkToRemoveName = chunksToRemove[i];
+            Chunk chunkToRemove;
+
+            if (chunks.TryGetValue(chunkToRemoveName, out chunkToRemove))
+            {
+                chunks.TryRemove(chunkToRemoveName, out chunkToRemove);
+
+                if (chunkToRemove.isChanged)
+                {
+                    chunkToRemove.SaveChunk();
+                }
+                Destroy(chunkToRemove.chunkGameObject);
+
+                yield return null;
+            }
+        }
+        chunksToRemove.Clear();
     }
 }
